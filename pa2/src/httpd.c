@@ -8,6 +8,10 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 
 char webpage[]=
 "HTTP/1.1 200 OK\r\n"
