@@ -7,14 +7,24 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
 
+char webpage[]=
+"HTTP/1.1 200 OK\r\n"
+"Content-Type: text/html; charset=UTF-8\r\n\r\n"
+"<!DOCTYPE html>\r\n"
+"<html> <head><title>Test</title>\r\n"
+"<body><center><h1>Hardcoded shit</h1><br>\r\n"
+"</center></body></html>\r\n";
 int main(int argc, char *argv[])
 {
 	int sockfd;
     struct sockaddr_in server, client;
-    char message[512];
 
-		/* Create and bind a UDP socket */
+    char message[2048];
+		socklen_t len = (socklen_t) sizeof(client);
+
+		/* sockfd = fd_ server  Create and bind a UDP socket */
 	  sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 	  memset(&server, 0, sizeof(server));
 	  server.sin_family = AF_INET;
@@ -22,19 +32,40 @@ int main(int argc, char *argv[])
     /* Network functions need arguments in network byte order instead of
        host byte order. The macros htonl, htons convert the values. */
     server.sin_addr.s_addr = htonl(INADDR_ANY);
-    server.sin_port = htons(32000);
+    server.sin_port = htons(8080);
 
+		//Gefur -1 í error Viljum við fara eftir þvi?
     bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server));
 
+		//integerinn er number of connections simeltins
+		listen(sockfd, 1);
     /* Before the server can accept messages, it has to listen to the
        welcome port. A backlog of one connection is allowed. */
+		while(1)
+		{
+			  int fd_client = accept(sockfd, (struct sockaddr *) &client, &len);
+				//could be -1 should we check?
+				printf("We got the client connection");
 
-    for (;;) {
+				if(!fork())
+				{
+					/*child proccess*/
+					close(sockfd);
+					read(fd_client, message, 2047);
+
+					printf("%sn", message);
+					write(fd_client, webpage, sizeof(webpage) - 1);
+				}
+				printf("Closing");
+				close(fd_client);
+				exit(0);
+		}
+		close(fd_client);
+    /*for (;;) {
         /* We first have to accept a TCP connection, connfd is a fresh
            handle dedicated to this connection. */
-        socklen_t len = (socklen_t) sizeof(client);
-				recvfrom(sockfd, message, sizeof(message) - 1,
+				/*recvfrom(sockfd, message, sizeof(message) - 1,
 				              0, (struct sockaddr *) &client, &len);
 
-          }
+          }*/
 }
