@@ -42,6 +42,7 @@ int main(int argc, char *argv[])
 
 		//integerinn er number of connections simeltins
 		listen(sockfd, 1);
+		printf("Why this not work");
     /* Before the server can accept messages, it has to listen to the
        welcome port. A backlog of one connection is allowed. */
 			 //Create the string after you get the ip and port
@@ -50,11 +51,12 @@ int main(int argc, char *argv[])
 			socklen_t len = (socklen_t) sizeof(client);
 			  int connfd = accept(sockfd, (struct sockaddr *) &client, &len);
 				/* Receive from connfd, not sockfd. */
-		ssize_t n = recv(connfd, message, sizeof(message) - 1, 0);
+				ssize_t n = recv(connfd, message, sizeof(message) - 1, 0);
 				//could be -1 should we check?
-				printf("We got the client connection");
+				//printf("We got the client connection");
  				send(connfd, webpage, sizeof(webpage), 0);
 				shutdown(connfd, SHUT_RDWR);
+				printf("Why won't you close");
 				close(connfd);
 		/*		if(!fork())
 				{
@@ -68,12 +70,5 @@ int main(int argc, char *argv[])
 				printf("Closing");
 				close(fd_client);*/
 		}
-
-    /*for (;;) {
-        /* We first have to accept a TCP connection, connfd is a fresh
-           handle dedicated to this connection. */
-				/*recvfrom(sockfd, message, sizeof(message) - 1,
-				              0, (struct sockaddr *) &client, &len);
-
-          }*/
+		printf("We never close");
 }
