@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
     /* Network functions need arguments in network byte order instead of
        host byte order. The macros htonl, htons convert the values. */
     server.sin_addr.s_addr = htonl(INADDR_ANY);
-    server.sin_port = htons(8080);
+    server.sin_port = htons(18484);
 
 		//Gefur -1 í error Viljum við fara eftir þvi?
     bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server));
