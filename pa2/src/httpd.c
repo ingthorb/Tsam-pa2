@@ -44,6 +44,7 @@ int main(int argc, char *argv[])
 		listen(sockfd, 1);
     /* Before the server can accept messages, it has to listen to the
        welcome port. A backlog of one connection is allowed. */
+			 //Create the string after you get the ip and port
 		for(;;)
 		{
 			socklen_t len = (socklen_t) sizeof(client);
@@ -53,6 +54,8 @@ int main(int argc, char *argv[])
 				//could be -1 should we check?
 				printf("We got the client connection");
  				send(connfd, webpage, sizeof(webpage), 0);
+				shutdown(connfd, SHUT_RDWR);
+				close(connfd);
 		/*		if(!fork())
 				{
 					/*child proccess*/
