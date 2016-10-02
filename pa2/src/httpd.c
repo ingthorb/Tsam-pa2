@@ -48,13 +48,13 @@ int main(int argc, char *argv[])
 			 //Create the string after you get the ip and port
 		for(;;)
 		{
-			socklen_t len = (socklen_t) sizeof(client);
+		  	socklen_t len = (socklen_t) sizeof(client);
 			  int connfd = accept(sockfd, (struct sockaddr *) &client, &len);
 				/* Receive from connfd, not sockfd. */
 				ssize_t n = recv(connfd, message, sizeof(message) - 1, 0);
 				//could be -1 should we check?
 				//printf("We got the client connection");
- 				send(connfd, webpage, sizeof(webpage), 0);
+ 				send(connfd, webpage, sizeof(webpage)-1);
 				shutdown(connfd, SHUT_RDWR);
 				printf("Why won't you close");
 				close(connfd);
