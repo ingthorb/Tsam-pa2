@@ -26,7 +26,6 @@ int main(int argc, char *argv[])
     struct sockaddr_in server, client;
 
     char message[2048];
-		socklen_t len = (socklen_t) sizeof(client);
 
 		/* sockfd = fd_ server  Create and bind a UDP socket */
 	  sockfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -45,26 +44,28 @@ int main(int argc, char *argv[])
 		listen(sockfd, 1);
     /* Before the server can accept messages, it has to listen to the
        welcome port. A backlog of one connection is allowed. */
-		while(1)
+		for(;;)
 		{
-			  int fd_client = accept(sockfd, (struct sockaddr *) &client, &len);
+			socklen_t len = (socklen_t) sizeof(client);
+			  int connfd = accept(sockfd, (struct sockaddr *) &client, &len);
+				/* Receive from connfd, not sockfd. */
+		ssize_t n = recv(connfd, message, sizeof(message) - 1, 0);
 				//could be -1 should we check?
 				printf("We got the client connection");
-
-				if(!fork())
+ 				send(connfd, webpage, sizeof(webpage), 0);
+		/*		if(!fork())
 				{
 					/*child proccess*/
-					close(sockfd);
+					/*close(sockfd);
 					read(fd_client, message, 2047);
 
 					printf("%sn", message);
 					write(fd_client, webpage, sizeof(webpage) - 1);
 				}
 				printf("Closing");
-				close(fd_client);
-				exit(0);
+				close(fd_client);*/
 		}
-		close(fd_client);
+
     /*for (;;) {
         /* We first have to accept a TCP connection, connfd is a fresh
            handle dedicated to this connection. */
