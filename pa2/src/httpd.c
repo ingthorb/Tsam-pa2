@@ -11,6 +11,7 @@
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <netdb.h>
+#include <time.h>
 
 #define RESPONSE_SIZE  3072
 #define HTML_SIZE 	   2048
@@ -152,13 +153,16 @@ int main(int argc, char *argv[])
     for (;;) {
         /* We first have to accept a TCP connection, connfd is a fresh
  *            handle dedicated to this connection. */
-        socklen_t len = (socklen_t) sizeof(client);
-        int connfd = accept(sockfd, (struct sockaddr *) &client, &len);
+
+			  socklen_t len = (socklen_t) sizeof(client);
+			  int connfd = accept(sockfd, (struct sockaddr *) &client, &len);
 
         /* Receive from connfd, not sockfd. */
         ssize_t n = recv(connfd, message, sizeof(message) - 1, 0);
+				fflush(stdout);
 
         message[n] = '\0';
+				printf("------------------\n");
         fprintf(stdout, "Received:\n%s\n", message);
 				printf("------------------\n");
 
@@ -214,8 +218,13 @@ int main(int argc, char *argv[])
         /* Send the message back. */
         send(connfd, response, (size_t) sizeof(response), 0);
 
-        /* Close the connection. */
-        shutdown(connfd, SHUT_RDWR);
-        close(connfd);
+        /* Close the connection if keep alive is not set,
+				 	 or if timeout has occurred.*/
+				if (g_strrstr(message, "Connection: keep-alive") == NULL)
+				{
+					shutdown(connfd, SHUT_RDWR);
+					printf("Closing the connection\n");
+	        close(connfd);
+				}
     }
 }
