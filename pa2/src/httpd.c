@@ -45,7 +45,10 @@ void generateHTML(char* html, struct sockaddr_in cli,  char *postContent, char *
 	char service[20];
 	getnameinfo(&cli, sizeof cli, host, sizeof host, service, sizeof service, 0);
 
-	gboolean isColorRequest = g_str_has_prefix(url, "/color");
+	gchar ** shortUrl = NULL;
+  shortUrl = g_strsplit(url, "?", 10); /* Drop the query parameters from the url */
+
+	gboolean isColorRequest = g_str_has_prefix(url, "/colour");
 
 	if (isColorRequest)
 	{
@@ -81,7 +84,7 @@ void generateHTML(char* html, struct sockaddr_in cli,  char *postContent, char *
 	strcat(html, "\t<body>\r\n");
 	strcat(html, "\t\t<p> ");
 	strcat(html, host);
-	strcat(html, url);
+	strcat(html, shortUrl[0]);
 	strcat(html, " ");
 	strcat(html, inet_ntoa(cli.sin_addr));
 	strcat(html, ":");
