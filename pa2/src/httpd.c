@@ -1,35 +1,4 @@
-/* A TCP echo server.
- *  *
- *   * Receive a message on port 32000, turn it into upper case and return
- *    * it to the sender.
- *     *
- *      * Copyright (c) 2016, Marcel Kyas
- *       * All rights reserved.
- *        *
- *         * Redistribution and use in source and binary forms, with or without
- *          * modification, are permitted provided that the following conditions are met:
- *           *     * Redistributions of source code must retain the above copyright
- *            *       notice, this list of conditions and the following disclaimer.
- *             *     * Redistributions in binary form must reproduce the above copyright
- *              *       notice, this list of conditions and the following disclaimer in the
- *               *       documentation and/or other materials provided with the distribution.
- *                *     * Neither the name of Reykjavik University nor the
- *                 *       names of its contributors may be used to endorse or promote products
- *                  *       derived from this software without specific prior written permission.
- *                   *
- *                    * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- *                     * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- *                      * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- *                       * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL MARCEL
- *                        * KYAS NOR REYKJAVIK UNIVERSITY BE LIABLE FOR ANY DIRECT, INDIRECT,
- *                         * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *                          * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- *                           * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- *                            * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- *                             * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- *                              * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- *                               * OF THE POSSIBILITY OF SUCH DAMAGE.
- *                                */
+
 
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -40,9 +9,10 @@
 #include <stdio.h>
 #include <glib.h>
 
-#define RESPONSE_SIZE 3072
-#define HTML_SIZE 	  2048
-#define HEADER_SIZE   1024
+#define RESPONSE_SIZE  3072
+#define HTML_SIZE 	   2048
+#define HEADER_SIZE    1024
+#define POST_BODY_SIZE 1024
 
 void generateHeader(char *header, int contentLength)
 {
@@ -64,7 +34,7 @@ void generateHeader(char *header, int contentLength)
 	strcat(header, "\r\nServer: Donut server 2.0\r\n\r\n");
 }
 
-void generateHTML(char* html, struct sockaddr_in cli)
+void generateHTML(char* html, struct sockaddr_in cli,  char *postContent)
 {
 	/* Get the host information from the client */
 	char host[1024];
@@ -77,6 +47,14 @@ void generateHTML(char* html, struct sockaddr_in cli)
 	strcat(html, "\t\t<p> ");
 	strcat(html, host);
 	strcat(html, " </p>\r\n");
+
+	if (postContent != NULL)
+	{
+		strcat(html, "\t\t<p> ");
+		strcat(html, postContent);
+		strcat(html, " </p>\r\n");
+	}
+
 	strcat(html, "\t</body>\r\n");
 	strcat(html, "</html>\r\n");
 }
@@ -126,12 +104,36 @@ int main(int argc, char *argv[])
 				/* Check if GET request */
 				if (g_str_has_prefix(splittedMessage[0], "GET"))
 				{
-					generateHTML(html, client);
+					generateHTML(html, client, NULL);
 					generateHeader(header, strlen(html));
 
 					strcat(response, header);
 					strcat(response, html);
-					printf("Yessss\n");
+					printf("GET request\n");
+				}
+				/* Check if HEAD request */
+				else if (g_str_has_prefix(splittedMessage[0], "HEAD"))
+				{
+					/* Generate the HTML to get the content length, which should be the
+					    size of the body that would have been sent had the request been
+							GET (HTTP 1.1 RFC) */
+					generateHTML(html, client, NULL);
+					generateHeader(header, strlen(html));
+
+					strcat(response, header);
+					printf("HEAD request\n");
+				}
+				/* Check if POST request */
+				else if (g_str_has_prefix(splittedMessage[0], "POST"))
+				{
+					memset(&splittedMessage[0], 0, sizeof(splittedMessage)); /* Clear the array */
+					splittedMessage = g_strsplit(message, "\r\n\r\n", 10); /* Access the POST data */
+					generateHTML(html, client, splittedMessage[1]);
+					generateHeader(header, strlen(html));
+
+					strcat(response, header);
+					strcat(response, html);
+					printf("POST request\n");
 				}
 
         /* Send the message back. */
@@ -142,4 +144,3 @@ int main(int argc, char *argv[])
         close(connfd);
     }
 }
-
