@@ -8,11 +8,13 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <glib.h>
+#include <arpa/inet.h>
 
 #define RESPONSE_SIZE  3072
 #define HTML_SIZE 	   2048
 #define HEADER_SIZE    1024
 #define POST_BODY_SIZE 1024
+#define QUERY_BUFFER   1024
 
 void generateHeader(char *header, int contentLength)
 {
@@ -34,18 +36,47 @@ void generateHeader(char *header, int contentLength)
 	strcat(header, "\r\nServer: Donut server 2.0\r\n\r\n");
 }
 
-void generateHTML(char* html, struct sockaddr_in cli,  char *postContent)
+void generateHTML(char* html, struct sockaddr_in cli,  char *postContent, char *url)
 {
 	/* Get the host information from the client */
 	char host[1024];
 	char service[20];
 	getnameinfo(&cli, sizeof cli, host, sizeof host, service, sizeof service, 0);
 
+	gboolean isColorRequest = g_str_has_prefix(url, "/color");
+
+	if (isColorRequest)
+	{
+		gchar** query = NULL;
+		query = g_strsplit(url, "?", 10);
+
+		gchar ** splittedQuery = NULL;
+		splittedQuery = g_strsplit(query[1], "=", 10);
+
+		strcat(html, "<!DOCTYPE html>\r\n");
+		strcat(html, "<html>\r\n");
+		strcat(html, "\t<body style=\"background-color:");
+		strcat(html, splittedQuery[1]);
+		strcat(html, "\">\r\n\t</body>\r\n");
+		strcat(html, "</html>\r\n");
+
+		return;
+	}
+
+	/* Get the port of the client */
+	char s_port[10] = "";
+	sprintf(s_port, "%d", ntohs(cli.sin_port));
+
 	strcat(html, "<!DOCTYPE html>\r\n");
 	strcat(html, "<html>\r\n");
 	strcat(html, "\t<body>\r\n");
 	strcat(html, "\t\t<p> ");
 	strcat(html, host);
+	strcat(html, url);
+	strcat(html, " ");
+	strcat(html, inet_ntoa(cli.sin_addr));
+	strcat(html, ":");
+	strcat(html, s_port);
 	strcat(html, " </p>\r\n");
 
 	if (postContent != NULL)
@@ -53,6 +84,29 @@ void generateHTML(char* html, struct sockaddr_in cli,  char *postContent)
 		strcat(html, "\t\t<p> ");
 		strcat(html, postContent);
 		strcat(html, " </p>\r\n");
+	}
+
+	/* Generate HTML from the URI's query */
+	gchar* res = g_strrstr(url, "?\0");
+
+	if (res != NULL)
+	{
+		gchar** query = NULL;
+		query = g_strsplit(url, "?", 10);
+
+		gchar** queries = NULL;
+		queries = g_strsplit(query[1], "&", 10);
+
+		int i = 0;
+		gchar* curr = queries[i];
+		while (curr != NULL)
+		{
+			strcat(html, "\t\t<p> ");
+			strcat(html, curr);
+			strcat(html, " </p>\r\n");
+			curr = queries[i+1];
+			i++;
+		}
 	}
 
 	strcat(html, "\t</body>\r\n");
@@ -101,10 +155,13 @@ int main(int argc, char *argv[])
 				gchar** splittedMessage = NULL;
 				splittedMessage = g_strsplit(message, "\n", 10);
 
+				gchar** splittedBySpace = NULL;
+				splittedBySpace = g_strsplit(splittedMessage[0], " ", 10);
+
 				/* Check if GET request */
 				if (g_str_has_prefix(splittedMessage[0], "GET"))
 				{
-					generateHTML(html, client, NULL);
+					generateHTML(html, client, NULL, splittedBySpace[1]);
 					generateHeader(header, strlen(html));
 
 					strcat(response, header);
@@ -117,7 +174,7 @@ int main(int argc, char *argv[])
 					/* Generate the HTML to get the content length, which should be the
 					    size of the body that would have been sent had the request been
 							GET (HTTP 1.1 RFC) */
-					generateHTML(html, client, NULL);
+					generateHTML(html, client, NULL, splittedBySpace[1]);
 					generateHeader(header, strlen(html));
 
 					strcat(response, header);
@@ -128,7 +185,7 @@ int main(int argc, char *argv[])
 				{
 					memset(&splittedMessage[0], 0, sizeof(splittedMessage)); /* Clear the array */
 					splittedMessage = g_strsplit(message, "\r\n\r\n", 10); /* Access the POST data */
-					generateHTML(html, client, splittedMessage[1]);
+					generateHTML(html, client, splittedMessage[1], splittedBySpace[1]);
 					generateHeader(header, strlen(html));
 
 					strcat(response, header);
