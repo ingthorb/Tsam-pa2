@@ -9,6 +9,8 @@
 #include <stdio.h>
 #include <glib.h>
 #include <arpa/inet.h>
+#include <stdlib.h>
+#include <netdb.h>
 
 #define RESPONSE_SIZE  3072
 #define HTML_SIZE 	   2048
@@ -53,12 +55,19 @@ void generateHTML(char* html, struct sockaddr_in cli,  char *postContent, char *
 		gchar ** splittedQuery = NULL;
 		splittedQuery = g_strsplit(query[1], "=", 10);
 
+		gchar ** color = NULL;
+		color = g_strsplit(splittedQuery[1], "&", 10);
+
 		strcat(html, "<!DOCTYPE html>\r\n");
 		strcat(html, "<html>\r\n");
 		strcat(html, "\t<body style=\"background-color:");
-		strcat(html, splittedQuery[1]);
+		strcat(html, color[0]);
 		strcat(html, "\">\r\n\t</body>\r\n");
 		strcat(html, "</html>\r\n");
+
+		g_strfreev(query);
+		g_strfreev(splittedQuery);
+		g_strfreev(color);
 
 		return;
 	}
@@ -107,6 +116,9 @@ void generateHTML(char* html, struct sockaddr_in cli,  char *postContent, char *
 			curr = queries[i+1];
 			i++;
 		}
+
+		g_strfreev(query);
+		g_strfreev(queries);
 	}
 
 	strcat(html, "\t</body>\r\n");
@@ -192,6 +204,9 @@ int main(int argc, char *argv[])
 					strcat(response, html);
 					printf("POST request\n");
 				}
+
+				g_strfreev(splittedMessage);
+				g_strfreev(splittedBySpace);
 
         /* Send the message back. */
         send(connfd, response, (size_t) sizeof(response), 0);
