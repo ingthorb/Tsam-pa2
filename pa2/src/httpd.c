@@ -214,7 +214,7 @@ int main(int argc, char *argv[])
 				/* Close the connection if all spots were taken */
 				if (clientFoundHisPlace == -1)
 				{
-					close(connfd);
+					//close(connfd);
 				}
 			}
 
@@ -296,7 +296,7 @@ int main(int argc, char *argv[])
 						or if timeout has occurred.*/
 						fprintf(stdout, "Result: --%s--\n", g_strrstr(message, "HTTP/1.1"));
 
-						if (g_strrstr(message, "Connection: keep-alive") == NULL || g_strrstr(message, "HTTP/1.1") == NULL)
+						if (g_strrstr(message, "HTTP/1.1") == NULL)
 						{
 							shutdown(clientConnFds[i], SHUT_RDWR);
 							printf("Closing the connection\n");
