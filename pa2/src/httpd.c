@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <glib.h>
+#include <glib/gprintf.h>
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <netdb.h>
@@ -124,7 +125,7 @@ void generateHTML(char* html, struct sockaddr_in cli, char* postContent, char* u
 
     strcat(html, "\t</body>\r\n");
     strcat(html, "</html>\r\n");
-} /* generateHTML */
+}
 
 int main(int argc, char* argv[])
 {
@@ -136,7 +137,7 @@ int main(int argc, char* argv[])
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
     /* Network functions need arguments in network byte order instead of
-     *        host byte order. The macros htonl, htons convert the values. */
+     * host byte order. The macros htonl, htons convert the values. */
     memset(&server, 0, sizeof(server));
     server.sin_family      = AF_INET;
     server.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -144,11 +145,14 @@ int main(int argc, char* argv[])
     bind(sockfd, (struct sockaddr*) &server, (socklen_t) sizeof(server));
 
     /* Before the server can accept messages, it has to listen to the
-    *        welcome port. A backlog of one connection is allowed. */
+     * welcome port. A backlog of one connection is allowed. */
     listen(sockfd, 5);
 
+		/* Store connfd for all the clients */
     int clientConnFds[NUMBER_OF_CLIENTS] = { 0 };
-    time_t clientTimeSinceActive[NUMBER_OF_CLIENTS] = { -1 };
+
+		/* Store the time when the clients were last active */
+    time_t clientTimeSinceActive[NUMBER_OF_CLIENTS] = { 0 };
 
     for (;;) {
         /* Variables for the select() function */
@@ -156,6 +160,7 @@ int main(int argc, char* argv[])
         struct timeval tv;
         int retval, max;
         max = sockfd;
+
         /* Watch the socket to see when it has input. */
         FD_ZERO(&rfds);
         FD_SET(sockfd, &rfds);
@@ -164,7 +169,7 @@ int main(int argc, char* argv[])
         tv.tv_sec  = 5;
         tv.tv_usec = 0;
 
-        // Add all open connections to the fdset
+        /* Add all open connections to the fdset */
         for (int i = 0; i < NUMBER_OF_CLIENTS; i++) {
             if (clientConnFds[i] != 0) {
                 if (clientConnFds[i] > max) {
@@ -176,30 +181,29 @@ int main(int argc, char* argv[])
         }
 
         /* Wait until some file descriptor has data ready */
-        retval = select(max + 1, &rfds, NULL, NULL, &tv);
+        retval = select(1024, &rfds, NULL, NULL, &tv);
 
         /* We first have to accept a TCP connection, connfd is a fresh
-         *            handle dedicated to this connection. */
+         * handle dedicated to this connection. */
 
         if (retval == -1) {
             perror("select()");
-        } else if (retval)   {
-            printf("data is available now\n");
-            // SToppar her svo gerist ekkert
-            // If there's a new incoming connection, add it to list of connections
+        } else if (retval) {
+            printf("Available data!\n");
+
+            /* If there's a new incoming connection, add it to list of connections */
             if (FD_ISSET(sockfd, &rfds)) {
-                printf("New connection HEYO~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+                printf("New incoming connection\n");
                 fflush(stdout);
 
                 /* Check if there's a spot available */
                 int clientFoundHisPlace = -1;
                 socklen_t len = (socklen_t) sizeof(client);
                 int connfd    = accept(sockfd, (struct sockaddr*) &client, &len);
-                printf("This is outside the for loop: ");
-                fprintf(stdout, "%d", connfd);
+
                 for (int i = 0; i < NUMBER_OF_CLIENTS; i++) {
                     if (clientConnFds[i] == 0) {
-                        clientConnFds[i]    = connfd;
+                        clientConnFds[i] = connfd;
                         clientFoundHisPlace = 1;
                         break;
                     }
@@ -211,16 +215,10 @@ int main(int argc, char* argv[])
                 }
             }
 
-            // Else go through the list of connections and handle their requests.
-
-            // printf("Inside ELSE");ssskdjsdksdksjk
-            // Forum rett
+            /* Else go through the list of connections and handle their requests. */
             for (int i = 0; i < NUMBER_OF_CLIENTS; i++) {
                 /* Check if the client is active and if theres a message waiting */
-                // eigum við að fara herna ef það er ekkert message?
-                if (FD_ISSET(clientConnFds[i], &rfds) /* && clientConnFds[i] != -1*/) {
-                    //  printf("The Client is active ");
-                    // Hann er active en sendir ekki neitt i message?
+                if (FD_ISSET(clientConnFds[i], &rfds)  && clientConnFds[i] != -1) {
                     memset(&message, 0, sizeof(message));
 
                     ssize_t n = recv(clientConnFds[i], message, sizeof(message) - 1, 0);
@@ -232,9 +230,10 @@ int main(int argc, char* argv[])
                         fprintf(stdout, "Received:\n%s\n", message);
                         printf("------------------\n");
 
-                        char header[HEADER_SIZE]     = "";
-                        char html[HTML_SIZE]         = "";
-                        char response[RESPONSE_SIZE] = "";
+                        char header[HEADER_SIZE]      = "";
+                        char html[HTML_SIZE]          = "";
+                        char response[RESPONSE_SIZE]  = "";
+												char requestMethod[HTML_SIZE] = "";
 
                         /* Check the request type*/
                         gchar** splittedMessage = NULL;
@@ -251,7 +250,10 @@ int main(int argc, char* argv[])
                             strcat(response, header);
                             strcat(response, html);
                             printf("GET request\n");
+
+														strcat(requestMethod, "GET");
                         }
+
                         /* Check if HEAD request */
                         else if (g_str_has_prefix(splittedMessage[0], "HEAD")) {
                             /* Generate the HTML to get the content length, which should be the
@@ -262,6 +264,9 @@ int main(int argc, char* argv[])
 
                             strcat(response, header);
                             printf("HEAD request\n");
+
+														strcat(requestMethod, "HEAD");
+
                         }
                         /* Check if POST request */
                         else if (g_str_has_prefix(splittedMessage[0], "POST")) {
@@ -273,39 +278,70 @@ int main(int argc, char* argv[])
                             strcat(response, header);
                             strcat(response, html);
                             printf("POST request\n");
+
+														strcat(requestMethod, "POST");
                         }
 
                         g_strfreev(splittedMessage);
                         g_strfreev(splittedBySpace);
 
+												char host[1024];
+										    char service[20];
+										    getnameinfo(&client, sizeof client, host, sizeof host, service, sizeof service, 0);
+
+												GTimeVal logTime;
+										    g_get_current_time(&logTime);
+
+												/* Log the request to a file */
+												FILE* fp;
+												fp = fopen("logfile.log", "a");
+												fprintf(fp, "%s : %s:%d %s %s : 200 OK\n", g_time_val_to_iso8601(&logTime), inet_ntoa(client.sin_addr), ntohs(client.sin_port), requestMethod, argv[1]);
+												fclose(fp);
+
                         /* Send the message back. */
                         send(clientConnFds[i], response, (size_t) sizeof(response), 0);
-                    } else               {
-                        // send(clientConnFds[i], message, (size_t) sizeof(message), 0);
+
+												/* Update the last active time */
+												time_t now = time(NULL);
+												clientTimeSinceActive[i] = now;
+
+												/* Throw out clients who've reached the time limit */
+												for (int i = 0; i < NUMBER_OF_CLIENTS; i++)
+												{
+													time_t curr = time(NULL);
+													if (clientTimeSinceActive[i] != 0)
+													{
+														if (difftime(curr, clientTimeSinceActive[i]) > 10)
+														{
+															printf("Inactive client\n");
+															shutdown(clientConnFds[i], SHUT_RDWR);
+			                        close(clientConnFds[i]);
+			                        clientConnFds[i] = 0;
+														}
+													}
+												}
+
+                    } else {
                         shutdown(clientConnFds[i], SHUT_RDWR);
-                        // printf("INSIDE THE ELSE MOFO");
-                        // printf("Closing the connection\n");
-                        // FD_CLR(clientConnFds[i],&rfds);
                         close(clientConnFds[i]);
                         clientConnFds[i] = 0;
-                        continue;
                     }
-                    // Loka tengingunni
 
-                    /* Close the connection if keep alive is not set,
-                     * or if timeout has occurred.*/
-                    fprintf(stdout, "Result: --%s--\n", g_strrstr(message, "HTTP/1.1"));
-
-                    if (g_strrstr(message, "HTTP/1.1") == NULL || g_strrstr(message, "Connection: close") != NULL) {
-                        shutdown(clientConnFds[i], SHUT_RDWR);
-                        printf("Closing the connection\n");
-                        close(clientConnFds[i]);
-                        clientConnFds[i] = 0;
-                    }
+                    /* Close the connection if keep alive is not set */
+										if (strlen(message) > 100)
+										{
+	                    if (g_strrstr(message, "HTTP/1.1") == NULL || g_strrstr(message, "Connection: close") != NULL)
+											{
+	                        shutdown(clientConnFds[i], SHUT_RDWR);
+	                        printf("Closing the connection\n");
+	                        close(clientConnFds[i]);
+	                        clientConnFds[i] = 0;
+	                    }
+										}
                 }
             }
-        } else   {
+        } else {
             printf("No data within five seconds\n");
         }
     }
-} /* main */
+}
