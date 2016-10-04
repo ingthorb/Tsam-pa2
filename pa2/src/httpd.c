@@ -159,8 +159,8 @@ int main(int argc, char *argv[])
 		/* Variables for the select() function */
 		fd_set rfds;
 		struct timeval tv;
-		int retval;
-
+		int retval,max;
+    max = sockfd;
 		/* Watch the socket to see when it has input. */
 		FD_ZERO(&rfds);
 		FD_SET(sockfd, &rfds);
@@ -174,12 +174,16 @@ int main(int argc, char *argv[])
 		{
 			if (clientConnFds[i] != -1)
 			{
+        if(clientConnFds[i] > max)
+        {
+          max = clientConnFds[i];
+        }
 				FD_SET(clientConnFds[i], &rfds);
 			}
 		}
 
 		/* Wait until some file descriptor has data ready */
-		retval = select(NUMBER_OF_CLIENTS + 1, &rfds, NULL, NULL, &tv);
+		retval = select(max + 1, &rfds, NULL, NULL, &tv);
 
 		/* We first have to accept a TCP connection, connfd is a fresh
 		*            handle dedicated to this connection. */
@@ -202,7 +206,8 @@ int main(int argc, char *argv[])
 				int clientFoundHisPlace = -1;
 				socklen_t len = (socklen_t) sizeof(client);
 				int connfd = accept(sockfd, (struct sockaddr *) &client, &len);
-
+        printf("This is inside the for loop: ");
+        fprintf(stdout,"%d",connfd);
 				for (int i = 0; i < NUMBER_OF_CLIENTS; i++) {
 					if (clientConnFds[i] == -1)
 					{
@@ -214,7 +219,7 @@ int main(int argc, char *argv[])
 				/* Close the connection if all spots were taken */
 				if (clientFoundHisPlace == -1)
 				{
-					//close(connfd);
+					close(connfd);
 				}
 			}
 
@@ -226,6 +231,7 @@ int main(int argc, char *argv[])
 					/* Check if the client is active and if theres a message waiting */
 					if (FD_ISSET(clientConnFds[i], &rfds) && clientConnFds[i] != -1)
 					{
+
 						memset(&message, 0, sizeof(message));
 
 						/* Receive from connfd, not sockfd. */
@@ -296,7 +302,7 @@ int main(int argc, char *argv[])
 						or if timeout has occurred.*/
 						fprintf(stdout, "Result: --%s--\n", g_strrstr(message, "HTTP/1.1"));
 
-						if (g_strrstr(message, "HTTP/1.1") == NULL)
+						if (g_strrstr(message, "HTTP/1.1") == NULL || g_strrstr(message, "Connection: close") != NULL)
 						{
 							shutdown(clientConnFds[i], SHUT_RDWR);
 							printf("Closing the connection\n");
