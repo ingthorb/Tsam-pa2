@@ -70,6 +70,7 @@ void generateHTML(char* html, struct sockaddr_in cli, char* postContent, char* u
         strcat(html, "\">\r\n\t</body>\r\n");
         strcat(html, "</html>\r\n");
 
+
         g_strfreev(query);
         g_strfreev(splittedQuery);
         g_strfreev(color);
@@ -121,8 +122,8 @@ void generateHTML(char* html, struct sockaddr_in cli, char* postContent, char* u
 
         g_strfreev(query);
         g_strfreev(queries);
+        g_free(res);
     }
-
     strcat(html, "\t</body>\r\n");
     strcat(html, "</html>\r\n");
 }
@@ -270,7 +271,7 @@ int main(int argc, char* argv[])
                         }
                         /* Check if POST request */
                         else if (g_str_has_prefix(splittedMessage[0], "POST")) {
-                            memset(&splittedMessage[0], 0, sizeof(splittedMessage)); /* Clear the array */
+                            memset(&splittedMessage[0], 0, sizeof(*splittedMessage)); /* Clear the array */
                             splittedMessage = g_strsplit(message, "\r\n\r\n", 10);   /* Access the POST data */
                             generateHTML(html, client, splittedMessage[1], splittedBySpace[1]);
                             generateHeader(header, strlen(html));
@@ -285,9 +286,9 @@ int main(int argc, char* argv[])
                         g_strfreev(splittedMessage);
                         g_strfreev(splittedBySpace);
 
-												char host[1024];
-										    char service[20];
-										    getnameinfo(&client, sizeof client, host, sizeof host, service, sizeof service, 0);
+												//char host[1024];
+										    //char service[20];
+										  //  getnameinfo(&client, sizeof client, host, sizeof host, service, sizeof service, 0);
 
 												GTimeVal logTime;
 										    g_get_current_time(&logTime);
