@@ -3,9 +3,11 @@ A Simple HTTP server
 An implementation of a HTTP server, which is built on top of the TCP server that was given as an example.
 The HTTP server manages, accepts and handles HEAD, GET and POST requests. It displays the content,IP address and
 the port of the client in a simple HTML 5 web page. It keeps a persistent connection if the
-connection is of HTTP/1.1 and if the connection is keep-alive else it closes the connection.
+connection is of HTTP/1.1 and if the connection contains the keep-alive in the HEAD else it closes the connection.
 The server can parse arguments and display on the web page, if the user goes to the requested page /color and
-adds a query specifying the background color of the page the color of the page changes.
+adds a query specifying the background color of the page the color of the page changes. We also implemented the main function
+of the cookies as if you access localhost/port/colour it displays the last requested colour or just a white screen if nothing is in the
+cookie.
 The HTTP server supports parallel connections through the select() command.
 Every request is logged into logfile.log.
 
@@ -18,7 +20,7 @@ Known bugs:
    There is a small leak that we can't figure out where it is coming from.
 
    Parallel connection not working completely:
-    We aren't sure if it is working completely correctly.
+   The tests that we implemented ourselves only allowed 5 connections at a time.
 
    Timeout maybe not working correctly:
-   We didn't get the chance to check if the timeout worked correctly.
+   The time variable in the timeout is a little off. Didn't get the time to test it thoroughly.

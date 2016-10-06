@@ -20,6 +20,8 @@
 #define QUERY_BUFFER      1024
 #define NUMBER_OF_CLIENTS 1024
 
+char cookies[256];
+
 void generateHeader(char* header, int contentLength)
 {
     strcat(header, "HTTP/1.1 200 OK\r\n");
@@ -36,7 +38,11 @@ void generateHeader(char* header, int contentLength)
     char s_contentLength[5] = "";
     sprintf(s_contentLength, "%d", contentLength);
     strcat(header, s_contentLength);
-
+    if(cookies[0] != 0)
+    {
+      strcat(header,"Set-Cookie");
+      strcat(header, cookies);
+    }
     strcat(header, "\r\nServer: Donut server 2.0\r\n\r\n");
 }
 
@@ -51,8 +57,9 @@ void generateHTML(char* html, struct sockaddr_in cli, char* postContent, char* u
     gchar** shortUrl = NULL;
     shortUrl = g_strsplit(url, "?", 10); /* Drop the query parameters from the url */
 
-    gboolean isColorRequest = g_str_has_prefix(url, "/colour");
 
+    gboolean isColorRequest = g_str_has_prefix(url, "/colour?");
+    gboolean isColor = g_str_has_prefix(url, "/colour");
     if (isColorRequest) {
         gchar** query = NULL;
         query = g_strsplit(url, "?", 10);
@@ -63,6 +70,15 @@ void generateHTML(char* html, struct sockaddr_in cli, char* postContent, char* u
         gchar** color = NULL;
         color = g_strsplit(splittedQuery[1], "&", 10);
 
+        int count = 0;
+        for(int i = 0; i < 256; i++)
+        {
+          if(cookies[i] == 0)
+          {
+            count++;
+          }
+        }
+        strncpy(cookies,color[0],count);
         strcat(html, "<!DOCTYPE html>\r\n");
         strcat(html, "<html>\r\n");
         strcat(html, "\t<body style=\"background-color:");
@@ -76,6 +92,20 @@ void generateHTML(char* html, struct sockaddr_in cli, char* postContent, char* u
         g_strfreev(color);
 
         return;
+    }
+    else if(isColor)
+    {
+      //If there is no colour we should return the empty page
+      //With the colour in the cookie
+      strcat(html, "<!DOCTYPE html>\r\n");
+      strcat(html, "<html>\r\n");
+      strcat(html, "\t<body style=\"background-color:");
+      //Should add the colour in the cookie here
+      strcat(html, cookies);
+      strcat(html, "\">\r\n\t</body>\r\n");
+      strcat(html, "</html>\r\n");
+
+      return;
     }
 
     /* Get the port of the client */
@@ -100,9 +130,9 @@ void generateHTML(char* html, struct sockaddr_in cli, char* postContent, char* u
         strcat(html, " </p>\r\n");
     }
 
+
     /* Generate HTML from the URI's query */
     gchar* res = g_strrstr(url, "?\0");
-
     if (res != NULL) {
         gchar** query = NULL;
         query = g_strsplit(url, "?", 10);
@@ -119,11 +149,11 @@ void generateHTML(char* html, struct sockaddr_in cli, char* postContent, char* u
             curr = queries[i + 1];
             i++;
         }
-
         g_strfreev(query);
         g_strfreev(queries);
         g_free(res);
-    }
+      }
+
     strcat(html, "\t</body>\r\n");
     strcat(html, "</html>\r\n");
 }
@@ -176,7 +206,7 @@ int main(int argc, char* argv[])
                 if (clientConnFds[i] > max) {
                     max = clientConnFds[i];
                 }
-                g_printf("I AM OPEN %d\n", clientConnFds[i]);
+              //  g_printf("I AM OPEN %d\n", clientConnFds[i]);
                 FD_SET(clientConnFds[i], &rfds);
             }
         }
@@ -285,10 +315,6 @@ int main(int argc, char* argv[])
 
                         g_strfreev(splittedMessage);
                         g_strfreev(splittedBySpace);
-
-												//char host[1024];
-										    //char service[20];
-										  //  getnameinfo(&client, sizeof client, host, sizeof host, service, sizeof service, 0);
 
 												GTimeVal logTime;
 										    g_get_current_time(&logTime);
